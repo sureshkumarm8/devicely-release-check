@@ -1,0 +1,32 @@
+name: Linux tarball smoke
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20.9.0', '22', '24', '26']
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Install and verify the committed tarball
+        run: |
+          tarball="$(find tarball -maxdepth 1 -name '*.tgz' -type f)"
+          sha256sum "$tarball"
+          node scripts/tarball-smoke.js --tarball "$tarball" --report "$RUNNER_TEMP/smoke.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-linux-${{ matrix.node }}
+          path: ${{ runner.temp }}/smoke.json
+          retention-days: 30
